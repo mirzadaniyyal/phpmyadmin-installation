@@ -1,0 +1,79 @@
+PHPmyadmin installation in Proxmox CT (Ubuntu 20 and above)
+How To Install PHPmyadmin on Ubuntu
+
+1. Update system
+
+apt update
+
+2. Install required packages
+
+apt install php-mbstring php-zip php-gd php-json php-curl -y
+
+3. Assuming you may have decided to enable the Validate Password plugin. As of this writing, enabling this component will trigger an error when you attempt to set a password for the phpmyadmin user
+
+pma_vpp_error
+
+To resolve this go to mysql terminal by typing:
+
+mysql
+
+Or, if you enabled password authentication for the root MySQL user, run this command and then enter your password when prompted:
+
+mysql -u root -p
+
+From the prompt, run the following command to disable the Validate Password component. Note that this won’t actually uninstall it, but just stop the component from being loaded on your MySQL server:
+
+UNINSTALL COMPONENT "file://component_validate_password";
+
+Following that, you can close the MySQL client by typing:
+
+exit
+
+4. Install PHPmyadmin
+
+apt install phpmyadmin
+
+Once phpMyAdmin is installed, you can open the MySQL prompt once again with sudo mysql or mysql -u root -p and then run the following command to re-enable the Validate Password component:
+
+INSTALL COMPONENT "file://component_validate_password";
+
+After that close the MySQL client by typing:
+
+exit
+
+5. The installation process adds the phpMyAdmin Apache configuration file into the /etc/apache2/conf-enabled/ directory, where it is read automatically. To finish configuring Apache and PHP to work with phpMyAdmin, the only remaining task in this section of the tutorial is to is explicitly enable the mbstring PHP extension, which you can do by typing:
+
+phpenmod mbstring
+
+6. Afterwards, restart Apache for your changes to be recognized:
+
+systemctl restart apache2
+
+Note. Before you login to phpmyadmin using root account first you need to set password policy to 0 so that you can change the password for your root account without errors:
+
+mysql> SET GLOBAL validate_password.policy=LOW;
+
+Then you have to login to mysql terminal and run this command to check which authentication method each of your MySQL user accounts use with the following command:
+
+SELECT user,authentication_string,plugin,host FROM mysql.user;
+
+The output would be like this:
+
++------------------+-------------------------------------------+-----------------------+-----------+
+| user             | authentication_string                     | plugin                | host      |
++------------------+-------------------------------------------+-----------------------+-----------+
+| root             |                                           | auth_socket           | localhost |
+| mysql.session    | *THISISNOTAVALIDPASSWORDTHATCANBEUSEDHERE | caching_sha2_password | localhost |
+| mysql.sys        | *THISISNOTAVALIDPASSWORDTHATCANBEUSEDHERE | caching_sha2_password | localhost |
+| debian-sys-maint | *8486437DE5F65ADC4A4B001CA591363B64746D4C | caching_sha2_password | localhost |
+| phpmyadmin       | *5FD2B7524254B7F81B32873B1EA6D681503A5CA9 | caching_sha2_password | localhost |
++------------------+-------------------------------------------+-----------------------+-----------+
+5 rows in set (0.00 sec)
+
+Now run the following command in Mysql to change the password of root user:
+
+ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'password';
+
+7. You can now access the web interface by visiting your server’s domain name or public IP address followed by /phpmyadmin:
+
+https://your_domain_or_IP/phpmyadmin
